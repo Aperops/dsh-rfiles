@@ -86,9 +86,11 @@ plugin row. Installing it therefore also registers the profile layer.
 
 ### From the DSH Web GUI (recommended)
 
-Open **Settings → Plugins** (the Plugins page), install `dsh-rfiles`, and make
-sure the new bundle is enabled. Installing a bundle enables it by default.
-Restart DSH if the page asks you to.
+Open **Settings → Plugins** (the Plugins page), then install from the
+repository URL, the release tarball URL, or the local directory when working
+from a source checkout. Once the package is published to npm, the name
+`dsh-rfiles` works there too. Make sure the new bundle is enabled; installing a
+bundle enables it by default. Restart DSH if the page asks you to.
 
 ### With the CLI
 
@@ -128,7 +130,7 @@ page. Host-side check (needs a browser-auth cookie for the `/api` fence):
 
 ```bash
 curl -s http://127.0.0.1:61298/api/rfiles.health
-# {"ok":true,"version":1,"workspaceRoot":"..."}
+# {"ok":true,"version":"1","workspaceRoot":"..."}
 ```
 
 If the button is missing, see [Troubleshooting](#troubleshooting) below.

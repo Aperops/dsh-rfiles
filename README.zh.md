@@ -133,7 +133,8 @@ Host 路由（全部是 /api/rfiles.* 的 Connection exact Fetch route；远程�
 ### 4.2 从 DSH Web GUI 安装（推荐）
 
 1. 打开 **设置 → 插件**（Plugins 页面）；
-2. 安装 `dsh-rfiles`，确认新 bundle 处于启用状态（安装 bundle 默认启用）；
+2. 用仓库地址、Release tarball 地址或源码目录的本地路径安装；发布到 npm 后也可直接安装
+   `dsh-rfiles`。确认新 bundle 处于启用状态（安装 bundle 默认启用）；
 3. 若页面提示需要重启，完全退出并重新打开 DSH；
 4. 打开任意会话，页面右下角出现「文件」按钮即成功。
 
