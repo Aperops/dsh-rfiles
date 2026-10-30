@@ -39,7 +39,8 @@
     "url": "https://github.com/Aperops/dsh-rfiles/issues"
   },
   "engines": {
-    "node": ">=22.19.0"
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.1-rc.3"
   },
   "dsh": {
     "engines": {
