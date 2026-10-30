@@ -323,7 +323,7 @@ node --test test/                      # 等价：node --test test/*.test.mjs
 
 已在开发机（macOS，DSH 0.2.1-rc.3/rc.5，remote-web-ui 0.4.8/0.4.12）验证：
 
-- **隔离实例端到端**：`DSH_HOME=/tmp/dshqa` 的 web profile + remote-web-ui 0.4.12 + 本插件，
+- **隔离实例端到端**：独立 `DSH_HOME` 的 web profile + remote-web-ui 0.4.12 + 本插件，
   经真实 `/remote` 配对通道跑通 health / 12 MiB 分块上传（含重复 offset 409）/ list / 下载 sha256
   / 会话日志 ZIP；直连 `/api` 另测 206+Content-Range、开区间 206、越界 416；共 26 PASS / 0 FAIL。
 - **包安装**：`dsh plugin add <tarball>` 后 bundle 层生效、`/api/rfiles.health` 200；详见仓库根

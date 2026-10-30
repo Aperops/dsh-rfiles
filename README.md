@@ -92,25 +92,25 @@ Restart DSH if the page asks you to.
 
 ### With the CLI
 
+The package is distributed as a prebuilt GitHub Release tarball (there is no
+install-time build):
+
 ```bash
-dsh plugin --profile web add dsh-rfiles
+dsh plugin --profile web add \
+  https://github.com/Aperops/dsh-rfiles/releases/download/v0.1.0/dsh-rfiles-0.1.0.tgz
 ```
 
-This installs the package into the profile. If the profile manifest does not
-already list the bundle, add `"dsh-rfiles"` to `dsh.profile.bundles` in
-`$DSH_HOME/profiles/web/package.json` and restart DSH:
+From source, or from a local tarball:
 
-```jsonc
-"dsh": {
-  "profile": {
-    "bundles": [
-      "@deepseek-ai/dsh-base",
-      "@deepseek-ai/dsh-web-app",
-      "dsh-rfiles"
-    ]
-  }
-}
+```bash
+dsh plugin --profile web add git+https://github.com/Aperops/dsh-rfiles.git
+dsh plugin --profile web add /path/to/dsh-rfiles-0.1.0.tgz
 ```
+
+Installing a bundle also registers its layer, so the profile's
+`dsh.profile.bundles` list gains `dsh-rfiles` automatically; no manual patch
+edit is needed. If you maintain the profile by hand, add `"dsh-rfiles"` to
+`dsh.profile.bundles` in `$DSH_HOME/profiles/web/package.json` and restart DSH.
 
 Confirm the composed tree contains the `rfiles` row:
 
@@ -118,17 +118,8 @@ Confirm the composed tree contains the `rfiles` row:
 dsh --profile web --dump-config | grep -A2 rfiles
 ```
 
-### From git or a local tarball
-
-```bash
-# git
-dsh plugin --profile web add git+https://github.com/Aperops/dsh-rfiles.git
-
-# a tarball built with `npm pack`
-dsh plugin --profile web add /path/to/dsh-rfiles-0.1.0.tgz
-```
-
-Then follow the bundle step above if needed.
+> Once the package is published to npm, `dsh plugin --profile web add dsh-rfiles`
+> works as well. The release tarball above is the supported path today.
 
 ### Confirm it loaded
 
