@@ -1,0 +1,6 @@
+# dsh-rfiles bundle layer: mounts the single Host plugin row. The browser
+# widget is injected by the Host through webserver/index-inject, so this package
+# declares no `dsh.client` entry and has no separate client bundle.
+- insert:
+    - id: rfiles
+      name: 'dsh-rfiles'

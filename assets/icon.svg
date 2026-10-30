@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="dsh-rfiles icon">
+  <rect x="6" y="6" width="168" height="168" rx="38" fill="#161a21" stroke="#2d3746" stroke-width="2"/>
+  <rect x="42" y="52" width="50" height="26" rx="9" fill="#2d394a"/>
+  <rect x="39" y="64" width="102" height="72" rx="14" fill="#2d394a" stroke="#566c88" stroke-width="3"/>
+  <g fill="#60c0ff">
+    <rect x="69" y="94" width="6" height="30"/>
+    <path d="M72 80 L84 95 L60 95 Z"/>
+  </g>
+  <g fill="#50dc82">
+    <rect x="105" y="80" width="6" height="30"/>
+    <path d="M108 124 L96 109 L120 109 Z"/>
+  </g>
+</svg>

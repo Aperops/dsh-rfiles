@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>dsh-rfiles mock</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --fg: #1b1c1f;
+    --muted: #6b7280;
+    --border: #e2e4e9;
+    --accent: #2f6feb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --surface: #1e2024;
+      --fg: #e9eaec;
+      --muted: #9aa0a6;
+      --border: #3a3f46;
+      --accent: #5b8dfa;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    padding: 24px 18px calc(96px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  h2 { font-size: 15px; margin: 22px 0 6px; }
+  p, li { color: var(--fg); }
+  .lead { color: var(--muted); margin: 0 0 18px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 0 0 14px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg);
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .pill.is-active { border-color: var(--accent); color: var(--accent); }
+  code {
+    padding: 1px 5px;
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.16);
+    font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  li { margin: 3px 0; }
+  .note { color: var(--muted); font-size: 13px; }
+  /* 模拟官方 composer，用于检查右下角浮动按钮是否遮挡输入区 */
+  .mock-composer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .mock-composer .mock-input {
+    flex: 1 1 auto;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .mock-composer .mock-send {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>dsh-rfiles 客户端联调页</h1>
+  <p class="lead">
+    这个页面由 <code>scripts/mock-server.mjs</code> 提供，用内存假数据模拟 CONTRACT.md §1 的全部路由，
+    便于在桌面或手机浏览器里手工验证 lib/client.js，不需要启动 DSH。
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <span class="pill" id="mode-pill">直连模式</span>
+      <a class="pill" href="?">直连 /api</a>
+      <a class="pill" href="?remote=1">远程模式 /remote/api</a>
+    </div>
+    <p class="note" style="margin-top:10px">
+      远程模式会发布 <code>__DSH_REMOTE_CHANNEL_BOOT__</code>，让下载链接带上 <code>/remote</code> 前缀；
+      mock server 会把 <code>/remote/api/*</code> 透传到同一套处理逻辑。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">手工验证清单</h2>
+    <ul>
+      <li>点右下角「文件」按钮打开面板；会话下拉应有两个 mock 会话，默认选中「示例会话 B（最新）」。</li>
+      <li>上传：选文件后按 8 MiB 分块 PUT，进度条累计；断网/失败后点「重试」应复用 uploadId 续传。</li>
+      <li>「只存入工作区」模式：完成后切到「下载」标签页，<code>.uploads/</code> 下能看到刚上传的文件。</li>
+      <li>下载：点 <code>demo.bin</code>（1 MiB）应触发原生下载；<code>⤓</code> 按钮走 fetch+blob 兜底保存。</li>
+      <li>「下载会话日志 ZIP」返回 <code>application/zip</code>；「通过请求保存」走 fetch。</li>
+      <li>Range：<code>curl -r 0-1023 -D- http://127.0.0.1:4399/api/rfiles.download?sessionId=mock-session-b&amp;path=demo.bin</code> 应为 206。</li>
+      <li>错误提示：把 <code>?remote=1</code> 页面的下载链接换成缺 sessionId 的地址，应显示中文错误。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">mock 数据</h2>
+    <ul>
+      <li><code>readme.txt</code>、<code>demo.bin</code>（1 MiB）、<code>示例图片.png</code></li>
+      <li><code>examples/notes.md</code>（验证面包屑）</li>
+      <li><code>exports/session-log.zip</code>（假日志 ZIP）</li>
+      <li><code>.uploads/</code>（workspace 模式上传的落点）</li>
+    </ul>
+  </div>
+
+  <p class="note">
+    直接双击打开本文件不会生效：客户端脚本由 mock server 在返回 HTML 时内联注入。
+    请先运行 <code>node scripts/mock-server.mjs --port 4399</code>，再访问
+    <code>http://127.0.0.1:4399/mock.html</code>。
+  </p>
+</main>
+
+<!-- 模拟官方 composer：用于检查浮动按钮在移动端的避让位置 -->
+<div class="mock-composer">
+  <div class="mock-input">模拟 composer（不遮挡检查用）</div>
+  <button class="mock-send" type="button">发送</button>
+</div>
+
+<script>
+  (function () {
+    'use strict';
+    var params = new URLSearchParams(window.location.search);
+    var remote = params.get('remote') === '1';
+
+    // 宿主注入的全局（真实环境由 Host 半区烘入，只含 remote/version）
+    window.__DSH_RFILES__ = { remote: false, version: '1' };
+
+    // 远程模式：client.js 运行时靠这个全局判定要不要给下载链接加 /remote 前缀
+    if (remote) {
+      window.__DSH_REMOTE_CHANNEL_BOOT__ = { mock: true };
+    }
+
+    var pill = document.getElementById('mode-pill');
+    if (pill) {
+      pill.textContent = remote ? '远程模式：下载链接带 /remote 前缀' : '直连模式：下载链接走 /api';
+      pill.classList.add('is-active');
+    }
+  })();
+</script>
+
+<!-- mock server 会把下面这行注释替换成内联的 <scr...ipt>lib/client.js</scr...ipt> -->
+<!-- MOCK_CLIENT_JS -->
+</body>
+</html>

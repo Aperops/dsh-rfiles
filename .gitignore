@@ -1,0 +1,13 @@
+# Dependencies and build output
+node_modules/
+
+# Packed tarballs (built locally with `npm pack`; publish from the registry)
+*.tgz
+
+# Test artifacts and local staging
+test/tmp/
+coverage/
+*.log
+
+# OS / editor noise
+.DS_Store

@@ -1,0 +1,55 @@
+{
+  "name": "dsh-rfiles",
+  "version": "0.1.0",
+  "description": "Host-side DSH plugin that adds resumable chunked uploads, send-to-Agent, workspace file downloads, and session-log ZIP export to the paired remote Web UI.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE",
+    "assets"
+  ],
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "remote",
+    "file-transfer",
+    "upload",
+    "download",
+    "mobile"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aperops/dsh-rfiles.git"
+  },
+  "homepage": "https://github.com/Aperops/dsh-rfiles#readme",
+  "bugs": {
+    "url": "https://github.com/Aperops/dsh-rfiles/issues"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.1-rc.3"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/"
+  }
+}
