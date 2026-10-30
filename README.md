@@ -86,16 +86,22 @@ plugin row. Installing it therefore also registers the profile layer.
 
 ### From the DSH Web GUI (recommended)
 
-Open **Settings → Plugins** (the Plugins page), then install from the
-repository URL, the release tarball URL, or the local directory when working
-from a source checkout. Once the package is published to npm, the name
-`dsh-rfiles` works there too. Make sure the new bundle is enabled; installing a
-bundle enables it by default. Restart DSH if the page asks you to.
+Open **Settings → Plugins** (the Plugins page) and install `dsh-rfiles` from
+npm. Without npm, install from the repository URL, the release tarball URL, or
+the local directory when working from a source checkout. Make sure the new
+bundle is enabled; installing a bundle enables it by default. Restart DSH if the
+page asks you to.
 
 ### With the CLI
 
-The package is distributed as a prebuilt GitHub Release tarball (there is no
-install-time build):
+From npm (recommended):
+
+```bash
+dsh plugin --profile web add dsh-rfiles
+```
+
+Without npm, install the prebuilt GitHub Release tarball (there is no
+install-time build either way):
 
 ```bash
 dsh plugin --profile web add \
@@ -119,9 +125,6 @@ Confirm the composed tree contains the `rfiles` row:
 ```bash
 dsh --profile web --dump-config | grep -A2 rfiles
 ```
-
-> Once the package is published to npm, `dsh plugin --profile web add dsh-rfiles`
-> works as well. The release tarball above is the supported path today.
 
 ### Confirm it loaded
 
