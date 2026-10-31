@@ -1,295 +1,223 @@
 # dsh-rfiles
 
-A Host-side plugin for the DSH Web GUI that adds two things the paired remote
-page cannot do on its own: **send files to the Agent** and **download files
-from the workspace**.
-
-It works on top of [@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui)
-(the plugin that turns a phone or another computer into a paired DSH client)
-and does not modify DSH core or that plugin.
-
-- Chunked, resumable uploads with progress (a file can be a photo, a document,
-  or any binary the Agent should receive).
-- Uploaded files are delivered to the session as real attachments, through the
-  same receipt/prompt path the built-in composer uses.
-- A workspace browser with native downloads, plus one-click session-log ZIP
-  export.
-- Everything is served through the plugin's own exact Fetch routes, so the
-  remote page's `/remote` pairing gate keeps working unchanged.
+A host-side DSH bundle plugin that adds a **文件** (Files) panel to the Web GUI:
+upload files from a phone or computer, send them to the Agent, save them in the
+session workspace, and download workspace files or a session-log ZIP.
 
 中文文档：[README.zh.md](./README.zh.md)
 
----
-
 ## Why this exists
 
-A paired remote page reaches the Host through the `/remote` prefix. The remote
-plugin patches **programmatic** requests (`fetch`, WebSocket, EventSource, and
-sub-resource `src` attributes) so they carry the device credential, but it does
-not patch **navigation**: `<a download>`, `window.open`, `location` and form
-submissions leave the page without the prefix. DSH's `/api` browser-trust fence
-then rejects them.
+The motivating need was **missing upload and download entry points in the paired
+remote UI**.
+`dsh-rfiles` supplies those entry points and a file-transfer workflow alongside
+[@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui).
+It does not modify DSH core or the remote plugin, and also works on a local
+desktop connection without that plugin.
 
-That produces three visible problems on a phone or a second computer:
-
-1. **Downloads fail.** The built-in "download session log" entry is an anchor
-   navigation whose URL has no `/remote` prefix, so it is refused by the fence.
-2. **Uploads are opaque.** The built-in uploader prefers an XHR inside a Web
-   Worker, which is outside the channel; large files give no reliable progress.
-3. **No ranges.** The remote proxy forwards only a small header allowlist and
-   drops `Range`, `If-Range`, `Content-Range` and `Accept-Ranges`, so HTTP
-   resume and media seeking are unavailable over the remote channel.
-
-This plugin sidesteps all three without touching either side:
-
-- uploads are plain `fetch` requests with `File.slice` and an idempotent
-  byte offset, so progress and resume are computed locally and do not depend on
-  the built-in uploader;
-- downloads are served by this plugin's own routes; the widget links to them
-  with an explicit `/remote` prefix. Anchor navigation is not rewritten by the
-  remote plugin, which is exactly what makes a prefixed URL work;
-- `Content-Disposition`, `Content-Length`, `Content-Type`, `ETag` and
-  `Last-Modified` are on the proxy's response allowlist, so the browser saves
-  the file normally.
+Remote UI capabilities and transport behavior vary by version. This README does
+not claim that native uploads or downloads fail in every upstream version, or
+that a historical proxy header allowlist still applies today.
 
 ## Features
 
-| Feature | Detail |
+| Feature | What it does |
 | --- | --- |
-| Send files to the Agent | Multi-select any file type; chunked upload with progress; optional text; delivered as a real attachment and a queued prompt |
-| Camera / photo library | `accept="image/*" capture="environment"`; images up to 20 MiB use the official image attachment shape |
-| Save to workspace only | Upload without prompting; files land in `<workspace>/.uploads/` (collisions renamed `name (n).ext`) |
-| Download workspace files | Breadcrumb navigation and directory listing (up to 500 entries per level); native browser download |
-| Session-log ZIP | Streams the official `/api/session.export` (with descendant sessions) and adds the download headers |
-| Progress, cancel, resume | Per-chunk progress, cancel, and resume within 24 h after a disconnect or page reload |
-| Session picker | Lists active sessions, selects the newest by default; a "remote" badge shows whether the `/remote` channel is in use |
-| Desktop and remote | Desktop connections use `/api` (HTTP Range works); remote pages use the `/remote` prefix automatically |
+| Send to Agent | Select multiple files, upload with per-chunk progress, then send real attachments and optional text as a queued prompt to the selected session |
+| Save to workspace | Save under `<workspace>/.uploads/` by default, without sending a prompt; duplicate names become `name (n).ext` |
+| Camera / library | Open the device image picker or camera where supported; PNG, JPEG, WebP and GIF files up to 20 MiB use image attachments; other files use file receipts |
+| Workspace downloads | Browse folders and breadcrumbs, up to 500 entries per directory; download a file with the browser, with a fetch/Blob fallback |
+| Session-log ZIP | Export the selected session, descendant sessions and attachment objects through DSH's session export API; this is not a ZIP of the workspace |
+| Interrupted uploads | Resume from the host's acknowledged byte offset when the browser record and host staging data are still available |
 
-Defaults, all configurable: 8 MiB per chunk, 2 GiB per file, 10 GiB of staging
-space. Staging lives in `$DSH_HOME/rfile-transfers/<uploadId>/` and survives a
-Host restart, so interrupted uploads can continue.
+The panel lists active sessions and initially selects the newest one. **Check
+its session selector before uploading, sending or downloading**; it need not
+match the conversation currently visible behind the panel.
 
-## Requirements
+## Requirements and installation
 
-- DSH `>=0.2.1-rc.3` (the plugin declares this in `dsh.engines.dsh`).
-- Node.js 22.19 or newer; DSH ships a compatible runtime, so no extra install
-  is needed.
-- Optional: [@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui)
-  for the paired-remote use case. The plugin also works on a plain desktop
-  connection.
+For `dsh-rfiles` **0.1.0**, `package.json` declares DSH `>=0.2.1-rc.3` and
+Node.js `>=22.19.0`. The repository's release verification records DSH
+`0.2.1-rc.5` on macOS on 2026-10-30; that is not a compatibility guarantee for
+every later version or mobile browser.
 
-## Install
+Install on the **DSH host**, in the profile serving your Web GUI. For the paired
+remote workflow, install and configure `@linxin666/dsh-remote-web-ui` separately
+and pair your device first. Local desktop use does not require it.
 
-The package is a DSH **bundle**: its `package.json` declares
-`dsh.bundle.patch` and it ships `cordis.patch.yml`, which inserts the single
-plugin row. Installing it therefore also registers the profile layer.
-
-### From the DSH Web GUI (recommended)
-
-Open **Settings → Plugins** (the Plugins page) and install `dsh-rfiles` from
-npm. Without npm, install from the repository URL, the release tarball URL, or
-the local directory when working from a source checkout. Make sure the new
-bundle is enabled; installing a bundle enables it by default. Restart DSH if the
-page asks you to.
-
-### With the CLI
-
-From npm (recommended):
+In **Settings → Plugins**, install `dsh-rfiles` from npm and ensure the bundle
+is enabled. Or use the CLI (replace `web` if you use another profile):
 
 ```bash
 dsh plugin --profile web add dsh-rfiles
 ```
 
-Without npm, install the prebuilt GitHub Release tarball (there is no
-install-time build either way):
+Alternatives, with no build step:
 
 ```bash
+# Published release tarball
 dsh plugin --profile web add \
   https://github.com/Aperops/dsh-rfiles/releases/download/v0.1.0/dsh-rfiles-0.1.0.tgz
-```
 
-From source, or from a local tarball:
-
-```bash
+# Source repository, or a local tarball
 dsh plugin --profile web add git+https://github.com/Aperops/dsh-rfiles.git
 dsh plugin --profile web add /path/to/dsh-rfiles-0.1.0.tgz
 ```
 
-Installing a bundle also registers its layer, so the profile's
-`dsh.profile.bundles` list gains `dsh-rfiles` automatically; no manual patch
-edit is needed. If you maintain the profile by hand, add `"dsh-rfiles"` to
-`dsh.profile.bundles` in `$DSH_HOME/profiles/web/package.json` and restart DSH.
-
-Confirm the composed tree contains the `rfiles` row:
-
-```bash
-dsh --profile web --dump-config | grep -A2 rfiles
-```
-
-### Confirm it loaded
-
-Open any session; a **Files** button appears in the lower-right corner of the
-page. Host-side check (needs a browser-auth cookie for the `/api` fence):
-
-```bash
-curl -s http://127.0.0.1:61298/api/rfiles.health
-# {"ok":true,"version":"1","workspaceRoot":"..."}
-```
-
-If the button is missing, see [Troubleshooting](#troubleshooting) below.
+The bundle's `cordis.patch.yml` registers the `rfiles` plugin row. Bundle
+installation registers its profile layer; no manual patch edit is normally
+needed. Restart DSH after installation and refresh the local or paired remote
+page. Open a session, then click **文件** (Files) in the lower-right corner. The panel
+labels in 0.1.0 are Chinese; the steps below include their exact text.
 
 ## Usage
 
-Open the **Files** button. The panel has two tabs.
+### Upload and send to the Agent
 
-### Upload / send to the Agent
+1. Open **文件 → 上传** (Upload), check the session selector, and choose
+   **发送给 Agent** (Send to Agent, the default).
+2. Choose one or more files, or use **拍照 / 相册** (Camera / library).
+   Selection starts the upload automatically.
+3. Wait for the upload to finish. At this point the files are staged on the
+   host; **they have not yet been sent to the Agent**.
+4. Add optional text and click **发送给 Agent**. The plugin submits the
+   attachments and a queued prompt to the selected session. Image processing
+   still depends on the selected model's capabilities.
 
-1. Pick **Send to Agent** (default) or **Save to workspace**.
-2. Choose files, or use **Camera / library** to take a photo.
-3. Upload starts automatically, in 8 MiB chunks, with a progress bar. Failed or
-   interrupted uploads can be retried; choosing the same file again within 24 h
-   resumes from the last acknowledged offset.
-4. In **Send to Agent** mode, add optional text and press **Send to Agent**. The
-   file arrives as a real attachment (images up to 20 MiB as image content) and
-   a prompt is queued on the selected session.
-5. In **Save to workspace** mode the file is written to
-   `<workspace>/.uploads/` and no prompt is sent.
+### Save without sending a prompt
 
-### Download
+1. Choose **只存入工作区** (Save to workspace) **before** selecting files.
+2. After upload completion, check the saved path shown for each file. The default
+   destination is `<workspace>/.uploads/`; duplicate names are renamed.
+3. No attachment or prompt is sent. You can later refer to the saved path in a
+   conversation. To send it through the attachment workflow, select the file
+   again in **发送给 Agent** mode; switching modes does not convert completed uploads.
 
-1. The **Download** tab starts at the workspace root; folders come first.
-2. Click a file to save it with the browser's native download. Links on a remote
-   page already carry the `/remote` prefix.
-3. If a browser blocks the navigation or the device is paired without cookies
-   (header-only credential), use the **⤓** button on the row: it fetches the
-   bytes and saves a Blob instead (fetch is rewritten by the remote channel and
-   carries the device credential).
-4. **Download session log ZIP** exports the current session, including
-   descendant sessions and attachment objects.
+### Resume an interrupted upload
 
-Only paths inside the session workspace are listed or served. There is no
-delete, rename, mkdir, or directory zip.
+Use **重试** (Retry), or reopen the panel and select the same file again in the
+same browser/site, session and upload mode. Resume records use the file's name,
+size and last-modified time and expire 24 hours after their last update. The
+host staging data must still exist; clearing browser storage, changing the file
+or losing staging data can require a fresh upload. Host restart alone does not
+erase the on-disk staging data.
 
-## Configuration
+Progress advances when a chunk is acknowledged, not continuously within each
+chunk. **取消上传** cancels the queue and attempts to delete the current upload's
+staging data; it is not a pause button. Upload resume uses byte offsets and does
+not depend on HTTP Range download support.
 
-All limits have defaults; override them in the profile's
-`cordis.patch.yml` (this is the profile's user layer, applied after the bundle
-layer):
+### Download files or a session-log ZIP
+
+1. Open **下载** (Download) and confirm the selected session.
+2. Browse the workspace and click a file for a native browser download. Remote
+   download links explicitly include `/remote`.
+3. If navigation is blocked or pairing uses a header credential without a
+   cookie, click **⤓** on the file row to save through fetch. This fallback
+   buffers the entire response as a Blob, so prefer native downloads for large files.
+4. Use **下载会话日志 ZIP** for a session export. Its **通过请求保存** button is
+   the corresponding fetch fallback. A browser may show a preview first; use
+   its save action to keep the file locally.
+
+Only the selected session's workspace is browsable. There is no delete,
+rename, directory creation or arbitrary directory ZIP feature.
+
+## Limits and configuration
+
+Defaults: **8 MiB per chunk, 2 GiB per file, 10 GiB staging budget**. Staging
+is stored at `$DSH_HOME/rfile-transfers/<uploadId>/`. Completed files waiting
+to be sent also occupy staging space. A 24-hour browser resume record is not
+a promise that host staging will be automatically deleted after 24 hours.
+
+Optional overrides in the profile's user `cordis.patch.yml` layer:
 
 ```yaml
 - id: rfiles
   config:
-    chunkBytes: 8388608        # bytes per chunk (default 8 MiB)
-    maxFileBytes: 2147483648   # per-file limit (default 2 GiB)
-    stagingBytes: 10737418240  # total staging limit (default 10 GiB)
-    uploadDir: .uploads        # workspace-mode destination
-    transferRoot: ''           # staging root; empty = $DSH_HOME/rfile-transfers
+    chunkBytes: 8388608
+    maxFileBytes: 2147483648
+    stagingBytes: 10737418240
+    uploadDir: .uploads
+    transferRoot: '' # default: $DSH_HOME/rfile-transfers
 ```
 
-## Security model
+In 0.1.0 the widget caps its chunk size at 64 MiB. Tunnel limits, browser
+memory and host disk space still apply; chunking does not guarantee tunnel
+availability or unlimited transfer time.
 
-- **No new authentication.** Every route is a Connection exact Fetch route.
-  A desktop owner browser is authorized by the normal browser credential; a
-  remote request must first pass the `/remote` pairing gate (device cookie or
-  `x-dsh-remote-device`), after which the proxy calls `/api` with its own
-  process credential. Non-owner peers still receive 403.
-- **Workspace confinement.** Listing, downloading and upload destinations are
-  resolved inside the session workspace; absolute paths, `..`, NUL bytes and
-  symlink escapes are rejected (realpath check).
-- **Staging only.** `$DSH_HOME/rfile-transfers/<uploadId>/` holds the bytes and
-  metadata of in-flight uploads only.
-- **Minimal surface.** List, download, upload, send. No delete, rename, mkdir,
-  terminal, or code execution.
-- Scripts and documentation never print device ids or credentials.
+The plugin's download route supports single HTTP byte ranges. End-to-end remote
+Range support depends on the installed proxy and tunnel. The 2026-10-30 release
+notes recorded a whole-file response / Range SKIP with that tested setup; they
+do not establish the behavior of current upstream releases. Check the actual
+response status and `Content-Range` after upgrades. No remote download-resume
+or media-seeking guarantee is made here.
 
-## Known limitations
+## Authentication and troubleshooting
 
-- **HTTP Range does not work through the remote proxy** (it drops `Range` and
-  related headers), so remote downloads are full-body transfers and video
-  seeking is unavailable. Desktop `/api` connections support single-range 206
-  responses. Upload resume is unaffected because it uses chunk offsets, not
-  HTTP ranges.
-- Only the workspace tree is browseable; there is no directory archive
-  (the session-log ZIP is the exception).
-- The session picker lists active sessions only; cold sessions need an
-  explicit id through the API.
-- Through Cloudflare tunnels, uploads are 8 MiB requests (which avoids a
-  single-request body cap) but total time and traffic are still limited by the
-  tunnel; Quick Tunnel availability is not guaranteed.
-- `present`-card "open on host" actions are meaningless on a phone; browse the
-  workspace in the **Download** tab instead.
-- If @linxin666/dsh-remote-web-ui changes its channel behavior (boot global
-  name, header allowlist, `/remote` semantics), this plugin needs a regression
-  run. Re-run `scripts/verify.sh` after upgrading it.
-- iOS Safari and Android browsers have not been tested as a full device matrix;
-  see the verification notes in the source checkout.
-
-## Troubleshooting
+The plugin uses DSH's existing connection authorization. Remote requests must
+pass the pairing gate; it adds no separate login. Paths are confined to the
+session workspace, including checks against traversal and symlink escapes.
 
 | Symptom | Check |
 | --- | --- |
-| No **Files** button | Fully restart DSH (patches are read at boot); hard-refresh the page (the widget is injected into the index head); check that the profile manifest lists the `dsh-rfiles` bundle and that `node_modules/dsh-rfiles` exists; search the console for `__DSH_RFILES__` / `[dsh-rfiles]`; a missing required service in `inject` prevents the plugin from mounting. |
-| Panel says "open a session first" | The picker lists active sessions only. Open a session in the GUI, then press refresh in the panel. |
-| Upload 401/403 | Pairing expired or the device credential is missing: re-pair. Confirm requests go to `/remote/api/rfiles.*`; if they still go to `/api/...` the remote boot patch did not run. |
-| Download 401/403 (including session-log ZIP) | An anchor navigation can only authenticate with the pairing cookie. Devices paired without cookies must use the **⤓** button. |
-| Clicking a file does nothing | The browser blocked the download; use **⤓**; on iOS a preview may appear first ("Save to Files"). |
-| Upload stalls | Inspect the chunk requests: `409 offset-mismatch` is the normal resume signal (the client continues from `received`); `413` means a quota; a dropped tunnel can be resumed by reopening the panel. |
-| `/api/rfiles.health` returns 404 | The plugin is not mounted or DSH was not restarted. |
-| Port is not 61298 | The DSH Web URL in the startup log shows the format/port you should use. |
+| No **文件** (Files) button | Confirm the bundle is enabled in the serving profile, restart DSH and hard-refresh; inspect startup/browser errors for `dsh-rfiles` |
+| No session in the panel | Open a session in the GUI, then refresh the panel's session list |
+| Upload 401/403 | Check pairing and whether remote requests reach `/remote/api/rfiles.*`; re-pair if needed |
+| Native download 401/403 or no response | Use **⤓** for files or **通过请求保存** for ZIP; navigation cannot attach a header-only pairing credential |
+| Upload error | `409 offset-mismatch` lets the client reconcile the acknowledged offset; `413` indicates a size or quota limit; retry after restoring connectivity |
+| Image rejected | Check the model's image support; only the image formats and size described above use image attachments |
 
-## Verification
+## If upstream makes this plugin unnecessary
 
-From a source checkout (scripts are not part of the npm tarball):
+This is a supplement to missing upstream capabilities and entry points. If DSH
+or `dsh-remote-web-ui` later provides the workflows you need natively, you may
+no longer need `dsh-rfiles`. There is no promised date or upstream commitment
+implied here, and this does not mean the plugin is already unnecessary.
+
+After upgrading, verify native upload/send, workspace-only saving, file
+download and session export as applicable on your actual devices and paired
+connection. Include large files and interrupted uploads if you rely on them.
+Once native behavior meets your needs, disable the plugin and check the native
+flow again before removing it.
+
+### Safe disable / uninstall
+
+1. Finish pending uploads and send queued attachments you want to keep. Confirm
+   saved workspace files and any required local downloads before disabling.
+2. In **Settings → Plugins**, disable `dsh-rfiles` to evaluate the native flow.
+   To uninstall, remove it there or run `dsh plugin --profile web remove dsh-rfiles`.
+3. If a manually maintained profile still lists it in `dsh.profile.bundles`,
+   remove that entry. Restart DSH and refresh the page.
+4. Treat user data separately from plugin removal. `.uploads/` contains saved
+   workspace files, not just temporary data; preserve or back it up. Only clean
+   the configured transfer staging directory after inspecting it and confirming
+   no unfinished or unsent upload is needed. No workspace deletion is required.
+
+## Development and verification
+
+Plain ESM, no build step or runtime dependencies. From a source checkout:
 
 ```bash
-cd dsh-rfiles
-
-# unit tests: path confinement, ranges, chunk store, routes
 node --test test/
-
-# syntax
-node --check lib/index.js && node --check lib/core.js && node --check lib/client.js
-
-# live connectivity check against the running Host through the real remote channel
-bash scripts/verify.sh                 # port defaults to 61298
-bash scripts/verify.sh --port 61299 --require-range
-```
-
-`verify.sh` uses a paired device credential (never printed) and checks health,
-a chunked upload, listing, a download with sha256 comparison, a Range request,
-and session-log export. Remote Range is reported as SKIP because the proxy
-drops the header; pass `--require-range` to turn that into a failure.
-
-## Uninstall
-
-1. In **Settings → Plugins**, disable and remove `dsh-rfiles`, or run
-   `dsh plugin --profile web remove dsh-rfiles`.
-2. Remove `"dsh-rfiles"` from `dsh.profile.bundles` if it is still listed.
-3. Restart DSH.
-4. Optional cleanup: `rm -rf "$DSH_HOME/rfile-transfers"` (stale staging) and
-   the workspace `.uploads/` directory (not removed automatically).
-
-## Development
-
-The package is plain ESM with no build step and no runtime dependencies.
-
-```bash
-cd dsh-rfiles
-node --test test/                       # 33 tests
+node --check lib/index.js
+node --check lib/core.js
+node --check lib/client.js
 node scripts/mock-server.mjs --port 4399
-# open http://127.0.0.1:4399/mock.html
-# remote-prefix mode: http://127.0.0.1:4399/mock.html?remote=1
+# Open http://127.0.0.1:4399/mock.html (or append ?remote=1)
 ```
 
-- `lib/index.js` — Cordis plugin: routes, config, widget injection.
-- `lib/core.js` — pure logic: path confinement, Range parsing, download
-  headers, chunk store.
-- `lib/client.js` — the browser widget (classic IIFE, Shadow DOM, mobile
-  drawer); injected by the Host into the index head.
-- `CONTRACT.md` — the HTTP contract (repo only; keep it in sync with tests).
-- `scripts/install.sh` — profile-local install from a source checkout
-  (symlink + patch row), with `--dry-run`.
-- `scripts/verify.sh`, `scripts/mock-server.mjs` — verification tools.
+The mock UI and unit tests are not a real-device compatibility matrix.
+`scripts/verify.sh` is a separate **live integration check**: it uses paired
+credentials and creates a test upload on a running host, then checks listing,
+download hash, Range and ZIP export. It is not read-only. A 200 response to its
+Range request is reported as SKIP; `--require-range` makes that a failure. The
+script's historical proxy explanation is not proof of the cause on a new setup.
+
+See [CONTRACT.md](./CONTRACT.md) for API details and
+[RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) for historical release evidence.
+`lib/index.js` registers routes and injects `lib/client.js`; `lib/core.js`
+implements paths, ranges and staging. Development scripts are not included in
+the npm tarball.
 
 ## License
 
