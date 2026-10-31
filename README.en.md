@@ -223,16 +223,10 @@ the npm tarball.
 
 This revision is licensed under the **GNU General Public License, version 3
 only (GPL-3.0-only)**. See [LICENSE](./LICENSE) for the full terms and
-[NOTICE](./NOTICE) for attribution and the historical MIT notice.
+[NOTICE](./NOTICE) for copyright and license notices.
 
 Commercial use and private modification are allowed. When distributing modified
 versions, you must license them under GPLv3 and provide recipients with the
 Corresponding Source as required by the license. Private modifications do not
 have to be published on the internet. The full license governs the distribution
 requirements.
-
-This change applies to this revision and subsequent releases based on it.
-Earlier copies obtained under MIT, including the published **v0.1.0**, retain
-their MIT permissions. Those grants are not retroactively withdrawn, and old
-tags and published packages are not being replaced. The repository version has
-not been bumped; this license change is not a republication of v0.1.0.
