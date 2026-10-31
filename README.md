@@ -1,135 +1,110 @@
-# dsh-rfiles
+# dsh-rfiles：DSH 远程文件传输伴生插件
 
-A host-side DSH bundle plugin that adds a **文件** (Files) panel to the Web GUI:
-upload files from a phone or computer, send them to the Agent, save them in the
-session workspace, and download workspace files or a session-log ZIP.
+在 DSH 宿主侧安装的 bundle 插件，为 Web GUI 增加 **文件（Files）** 面板：从手机或电脑
+上传文件、发送给 Agent、仅保存到会话工作区，以及下载工作区文件和会话日志 ZIP。
 
-中文文档：[README.zh.md](./README.zh.md)
+English: [README.en.md](./README.en.md)
 
-## Why this exists
+## 为什么需要它
 
-The motivating need was **missing upload and download entry points in the paired
-remote UI**.
-`dsh-rfiles` supplies those entry points and a file-transfer workflow alongside
-[@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui).
-It does not modify DSH core or the remote plugin, and also works on a local
-desktop connection without that plugin.
+最初要解决的是配对远程界面上**缺少上传和下载的功能入口**。`dsh-rfiles` 为
+[@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui)
+提供配套入口和传输流程，不修改 DSH 核心或远程插件；不用远程插件的本地桌面连接也能使用。
 
-Remote UI capabilities and transport behavior vary by version. This README does
-not claim that native uploads or downloads fail in every upstream version, or
-that a historical proxy header allowlist still applies today.
+上游界面能力和传输行为会随版本变化。本文不声称所有版本的原生上传、下载都会失败，
+也不把历史代理请求头白名单当作当前版本的永久限制。
 
-## Features
+## 功能一览
 
-| Feature | What it does |
+| 功能 | 实际行为 |
 | --- | --- |
-| Send to Agent | Select multiple files, upload with per-chunk progress, then send real attachments and optional text as a queued prompt to the selected session |
-| Save to workspace | Save under `<workspace>/.uploads/` by default, without sending a prompt; duplicate names become `name (n).ext` |
-| Camera / library | Open the device image picker or camera where supported; PNG, JPEG, WebP and GIF files up to 20 MiB use image attachments; other files use file receipts |
-| Workspace downloads | Browse folders and breadcrumbs, up to 500 entries per directory; download a file with the browser, with a fetch/Blob fallback |
-| Session-log ZIP | Export the selected session, descendant sessions and attachment objects through DSH's session export API; this is not a ZIP of the workspace |
-| Interrupted uploads | Resume from the host's acknowledged byte offset when the browser record and host staging data are still available |
+| 发送给 Agent | 多选文件，按分块显示进度，上传后将真实附件和可选文字作为排队提示发送到选定会话 |
+| 只存入工作区 | 默认保存到 `<workspace>/.uploads/`，不发送提示；同名文件改为 `name (n).ext` |
+| 拍照 / 相册 | 由设备支持情况决定打开相册或相机；PNG、JPEG、WebP、GIF 且 ≤ 20 MiB 使用图片附件，其他文件使用文件收据 |
+| 下载工作区文件 | 目录列表和面包屑导航，每层最多 500 项；原生浏览器下载，另有 fetch/Blob 保存兜底 |
+| 会话日志 ZIP | 调用 DSH 会话导出接口，含选定会话、子会话和附件对象；不是整个工作区的压缩包 |
+| 中断上传续传 | 浏览器续传记录和宿主暂存数据仍在时，从宿主已确认的字节偏移继续 |
 
-The panel lists active sessions and initially selects the newest one. **Check
-its session selector before uploading, sending or downloading**; it need not
-match the conversation currently visible behind the panel.
+面板列出活跃会话，首次默认选择最新会话。**上传、发送、下载前都请核对面板的会话选择器**，
+不要假设它一定与面板背后当前显示的对话一致。
 
-## Requirements and installation
+## 要求与安装
 
-For `dsh-rfiles` **0.1.0**, `package.json` declares DSH `>=0.2.1-rc.3` and
-Node.js `>=22.19.0`. The repository's release verification records DSH
-`0.2.1-rc.5` on macOS on 2026-10-30; that is not a compatibility guarantee for
-every later version or mobile browser.
+`dsh-rfiles` **0.1.0** 的 `package.json` 声明 DSH `>=0.2.1-rc.3`、Node.js
+`>=22.19.0`。仓库发行核验记录针对 2026-10-30 的 macOS / DSH `0.2.1-rc.5`；
+这不代表已验证所有后续版本或移动浏览器。
 
-Install on the **DSH host**, in the profile serving your Web GUI. For the paired
-remote workflow, install and configure `@linxin666/dsh-remote-web-ui` separately
-and pair your device first. Local desktop use does not require it.
+安装位置是 **DSH 宿主**，使用实际运行 Web GUI 的 profile。配对远程使用时，需另外
+安装、配置 `@linxin666/dsh-remote-web-ui` 并完成设备配对；本地桌面使用不需要它。
 
-In **Settings → Plugins**, install `dsh-rfiles` from npm and ensure the bundle
-is enabled. Or use the CLI (replace `web` if you use another profile):
+在 **设置 → 插件（Settings → Plugins）** 中从 npm 安装 `dsh-rfiles`，确认 bundle
+已启用；也可使用 CLI（若实际 profile 不是 `web`，请替换）：
 
 ```bash
 dsh plugin --profile web add dsh-rfiles
 ```
 
-Alternatives, with no build step:
+其他安装来源，无需构建：
 
 ```bash
-# Published release tarball
+# 已发布的 Release 包
 dsh plugin --profile web add \
   https://github.com/Aperops/dsh-rfiles/releases/download/v0.1.0/dsh-rfiles-0.1.0.tgz
 
-# Source repository, or a local tarball
+# 源码仓库或本地包
 dsh plugin --profile web add git+https://github.com/Aperops/dsh-rfiles.git
 dsh plugin --profile web add /path/to/dsh-rfiles-0.1.0.tgz
 ```
 
-The bundle's `cordis.patch.yml` registers the `rfiles` plugin row. Bundle
-installation registers its profile layer; no manual patch edit is normally
-needed. Restart DSH after installation and refresh the local or paired remote
-page. Open a session, then click **文件** (Files) in the lower-right corner. The panel
-labels in 0.1.0 are Chinese; the steps below include their exact text.
+bundle 内的 `cordis.patch.yml` 注册 `rfiles` 插件行，安装 bundle 会注册对应 profile
+层，通常无需手动改 patch。安装后重启 DSH，刷新本地或配对远程页面，打开会话，点击
+右下角 **文件（Files）**。0.1.0 面板内部按钮为中文。
 
-## Usage
+## 使用方式
 
-### Upload and send to the Agent
+### 上传并发送给 Agent
 
-1. Open **文件 → 上传** (Upload), check the session selector, and choose
-   **发送给 Agent** (Send to Agent, the default).
-2. Choose one or more files, or use **拍照 / 相册** (Camera / library).
-   Selection starts the upload automatically.
-3. Wait for the upload to finish. At this point the files are staged on the
-   host; **they have not yet been sent to the Agent**.
-4. Add optional text and click **发送给 Agent**. The plugin submits the
-   attachments and a queued prompt to the selected session. Image processing
-   still depends on the selected model's capabilities.
+1. 打开 **文件 → 上传**，核对会话，选择默认的 **发送给 Agent** 模式。
+2. 选择一个或多个文件，或点击 **拍照 / 相册**。选完后自动开始上传。
+3. 等待上传完成。此时文件还在宿主暂存区，**尚未发送给 Agent**。
+4. 填写可选补充说明，点击 **发送给 Agent**，把附件和提示排队提交到选定会话。
+   图片处理仍取决于所选模型是否支持图片。
 
-### Save without sending a prompt
+### 只保存，不发送提示
 
-1. Choose **只存入工作区** (Save to workspace) **before** selecting files.
-2. After upload completion, check the saved path shown for each file. The default
-   destination is `<workspace>/.uploads/`; duplicate names are renamed.
-3. No attachment or prompt is sent. You can later refer to the saved path in a
-   conversation. To send it through the attachment workflow, select the file
-   again in **发送给 Agent** mode; switching modes does not convert completed uploads.
+1. **选择文件之前**切换到 **只存入工作区**。
+2. 上传完成后检查文件条目显示的保存路径；默认在 `<workspace>/.uploads/`，同名自动改名。
+3. 此模式不会发送附件或提示。之后可以在对话里引用保存路径；如需走附件发送流程，
+   请切回 **发送给 Agent** 并重新选择文件。切换模式不会转换已经完成的上传。
 
-### Resume an interrupted upload
+### 中断后续传
 
-Use **重试** (Retry), or reopen the panel and select the same file again in the
-same browser/site, session and upload mode. Resume records use the file's name,
-size and last-modified time and expire 24 hours after their last update. The
-host staging data must still exist; clearing browser storage, changing the file
-or losing staging data can require a fresh upload. Host restart alone does not
-erase the on-disk staging data.
+点击 **重试**，或重新打开面板，在同一浏览器／站点、同一会话、同一上传模式下重新选择
+同一个文件。续传记录依据文件名、大小和最后修改时间匹配，自最后更新起 24 小时内有效。
+宿主暂存数据也必须仍在；清除浏览器存储、修改文件或丢失暂存数据可能需要重新上传。
+仅重启宿主不会删除磁盘上的暂存数据。
 
-Progress advances when a chunk is acknowledged, not continuously within each
-chunk. **取消上传** cancels the queue and attempts to delete the current upload's
-staging data; it is not a pause button. Upload resume uses byte offsets and does
-not depend on HTTP Range download support.
+进度在每块得到确认后更新，不是块内连续进度。**取消上传**会取消队列，并尝试删除当前
+上传的暂存数据，不能当作暂停按钮。上传续传使用字节偏移，不依赖下载的 HTTP Range。
 
-### Download files or a session-log ZIP
+### 下载文件和会话日志
 
-1. Open **下载** (Download) and confirm the selected session.
-2. Browse the workspace and click a file for a native browser download. Remote
-   download links explicitly include `/remote`.
-3. If navigation is blocked or pairing uses a header credential without a
-   cookie, click **⤓** on the file row to save through fetch. This fallback
-   buffers the entire response as a Blob, so prefer native downloads for large files.
-4. Use **下载会话日志 ZIP** for a session export. Its **通过请求保存** button is
-   the corresponding fetch fallback. A browser may show a preview first; use
-   its save action to keep the file locally.
+1. 切到 **下载**，确认选中的会话。
+2. 浏览工作区，点击文件触发浏览器原生下载；远程下载链接显式带 `/remote` 前缀。
+3. 若导航被拦截，或设备只有请求头配对凭据、没有 cookie，点击文件行右侧 **⤓**
+   通过 fetch 保存。兜底方式会把整个响应缓冲为 Blob，大文件优先用原生下载。
+4. 点击 **下载会话日志 ZIP** 导出会话；旁边 **通过请求保存** 是 ZIP 的 fetch 兜底。
+   浏览器可能先显示预览，需要再用其保存功能将文件留在本机。
 
-Only the selected session's workspace is browsable. There is no delete,
-rename, directory creation or arbitrary directory ZIP feature.
+仅能浏览选定会话的工作区；不提供删除、重命名、新建目录或任意目录打包功能。
 
-## Limits and configuration
+## 限制与配置
 
-Defaults: **8 MiB per chunk, 2 GiB per file, 10 GiB staging budget**. Staging
-is stored at `$DSH_HOME/rfile-transfers/<uploadId>/`. Completed files waiting
-to be sent also occupy staging space. A 24-hour browser resume record is not
-a promise that host staging will be automatically deleted after 24 hours.
+默认 **8 MiB／块、2 GiB／文件、10 GiB 暂存预算**。暂存位置为
+`$DSH_HOME/rfile-transfers/<uploadId>/`。已上传但尚未发送的文件也占暂存空间。
+浏览器续传记录的 24 小时有效期，不代表宿主会在 24 小时后自动清理暂存文件。
 
-Optional overrides in the profile's user `cordis.patch.yml` layer:
+可在 profile 的用户 `cordis.patch.yml` 层覆盖配置：
 
 ```yaml
 - id: rfiles
@@ -138,64 +113,56 @@ Optional overrides in the profile's user `cordis.patch.yml` layer:
     maxFileBytes: 2147483648
     stagingBytes: 10737418240
     uploadDir: .uploads
-    transferRoot: '' # default: $DSH_HOME/rfile-transfers
+    transferRoot: '' # 默认 $DSH_HOME/rfile-transfers
 ```
 
-In 0.1.0 the widget caps its chunk size at 64 MiB. Tunnel limits, browser
-memory and host disk space still apply; chunking does not guarantee tunnel
-availability or unlimited transfer time.
+0.1.0 小部件将分块大小限制在最高 64 MiB。隧道限制、浏览器内存和宿主磁盘空间仍然
+适用，分块不保证隧道可用性或无限传输时长。
 
-The plugin's download route supports single HTTP byte ranges. End-to-end remote
-Range support depends on the installed proxy and tunnel. The 2026-10-30 release
-notes recorded a whole-file response / Range SKIP with that tested setup; they
-do not establish the behavior of current upstream releases. Check the actual
-response status and `Content-Range` after upgrades. No remote download-resume
-or media-seeking guarantee is made here.
+插件下载接口支持单段 HTTP Range。远程端到端 Range 是否生效取决于实际安装的代理
+和隧道。2026-10-30 发行记录在当时环境下得到全量响应／Range SKIP，不能据此认定
+当前上游版本仍有同样行为。升级后应检查实际响应状态和 `Content-Range`；本文不承诺
+远程下载断点续传或媒体拖动播放。
 
-## Authentication and troubleshooting
+## 鉴权与排查
 
-The plugin uses DSH's existing connection authorization. Remote requests must
-pass the pairing gate; it adds no separate login. Paths are confined to the
-session workspace, including checks against traversal and symlink escapes.
+沿用 DSH 连接鉴权，远程请求先通过配对入口，不新增独立登录。路径限制在会话工作区内，
+并检查路径穿越和符号链接越界。
 
-| Symptom | Check |
+| 现象 | 检查方式 |
 | --- | --- |
-| No **文件** (Files) button | Confirm the bundle is enabled in the serving profile, restart DSH and hard-refresh; inspect startup/browser errors for `dsh-rfiles` |
-| No session in the panel | Open a session in the GUI, then refresh the panel's session list |
-| Upload 401/403 | Check pairing and whether remote requests reach `/remote/api/rfiles.*`; re-pair if needed |
-| Native download 401/403 or no response | Use **⤓** for files or **通过请求保存** for ZIP; navigation cannot attach a header-only pairing credential |
-| Upload error | `409 offset-mismatch` lets the client reconcile the acknowledged offset; `413` indicates a size or quota limit; retry after restoring connectivity |
-| Image rejected | Check the model's image support; only the image formats and size described above use image attachments |
+| 没有 **文件（Files）** | 确认实际服务 profile 已启用 bundle；重启 DSH、强制刷新，查看启动或浏览器中的 `dsh-rfiles` 错误 |
+| 面板没有会话 | 先在 GUI 打开会话，再刷新面板会话列表 |
+| 上传 401/403 | 检查配对状态以及远程请求是否到 `/remote/api/rfiles.*`，必要时重新配对 |
+| 原生下载 401/403 或无反应 | 文件用 **⤓**，ZIP 用 **通过请求保存**；导航无法附带仅存在于请求头的配对凭据 |
+| 上传报错 | `409 offset-mismatch` 用于同步宿主确认偏移；`413` 表示大小或配额限制；连接恢复后重试 |
+| 图片被拒绝 | 检查模型的图片能力；仅前述格式和大小范围使用图片附件 |
 
-## If upstream makes this plugin unnecessary
+## 上游完善后，可能不再需要这个插件
 
-This is a supplement to missing upstream capabilities and entry points. If DSH
-or `dsh-remote-web-ui` later provides the workflows you need natively, you may
-no longer need `dsh-rfiles`. There is no promised date or upstream commitment
-implied here, and this does not mean the plugin is already unnecessary.
+本插件补充上游缺少的能力和入口。如果未来 DSH 或 `dsh-remote-web-ui` 原生覆盖了你
+需要的流程，就可以评估不再使用 `dsh-rfiles`。这里没有承诺时间，也不代表上游作出过
+实现承诺，更不是说现在已经没有安装它的必要。
 
-After upgrading, verify native upload/send, workspace-only saving, file
-download and session export as applicable on your actual devices and paired
-connection. Include large files and interrupted uploads if you rely on them.
-Once native behavior meets your needs, disable the plugin and check the native
-flow again before removing it.
+升级后，在实际设备和配对连接上验证所需的原生上传／发送、仅存工作区、文件下载和会话
+导出。如果依赖大文件和中断续传，也应一起验证。原生能力满足需求后，先禁用插件再检查
+原生流程，确认后再卸载。
 
-### Safe disable / uninstall
+### 安全停用或卸载
 
-1. Finish pending uploads and send queued attachments you want to keep. Confirm
-   saved workspace files and any required local downloads before disabling.
-2. In **Settings → Plugins**, disable `dsh-rfiles` to evaluate the native flow.
-   To uninstall, remove it there or run `dsh plugin --profile web remove dsh-rfiles`.
-3. If a manually maintained profile still lists it in `dsh.profile.bundles`,
-   remove that entry. Restart DSH and refresh the page.
-4. Treat user data separately from plugin removal. `.uploads/` contains saved
-   workspace files, not just temporary data; preserve or back it up. Only clean
-   the configured transfer staging directory after inspecting it and confirming
-   no unfinished or unsent upload is needed. No workspace deletion is required.
+1. 完成进行中的上传，将需要保留的待发送附件发送出去；确认工作区文件已保存，所需
+   下载已留在本机，再停用。
+2. 在 **设置 → 插件** 中禁用 `dsh-rfiles`，评估原生流程。确定卸载时，可在同页移除，
+   或执行 `dsh plugin --profile web remove dsh-rfiles`。
+3. 如果手动维护的 profile 仍在 `dsh.profile.bundles` 中列出它，再移除该条目。
+   重启 DSH 并刷新页面。
+4. **插件卸载与用户数据清理分开处理**。`.uploads/` 是已保存的工作区文件，不只是缓存，
+   应保留或备份。只有检查过配置的传输暂存目录，确认不再需要未完成或未发送的上传后，
+   才考虑清理该目录；卸载不需要删除工作区。
 
-## Development and verification
+## 开发与验证
 
-Plain ESM, no build step or runtime dependencies. From a source checkout:
+纯 ESM，无构建步骤或运行时依赖。在源码 checkout 中运行：
 
 ```bash
 node --test test/
@@ -203,22 +170,18 @@ node --check lib/index.js
 node --check lib/core.js
 node --check lib/client.js
 node scripts/mock-server.mjs --port 4399
-# Open http://127.0.0.1:4399/mock.html (or append ?remote=1)
+# 打开 http://127.0.0.1:4399/mock.html；远程前缀模式追加 ?remote=1
 ```
 
-The mock UI and unit tests are not a real-device compatibility matrix.
-`scripts/verify.sh` is a separate **live integration check**: it uses paired
-credentials and creates a test upload on a running host, then checks listing,
-download hash, Range and ZIP export. It is not read-only. A 200 response to its
-Range request is reported as SKIP; `--require-range` makes that a failure. The
-script's historical proxy explanation is not proof of the cause on a new setup.
+模拟界面和单元测试不等于真实设备兼容性矩阵。`scripts/verify.sh` 是另外的**在线集成
+检查**：使用配对凭据，在运行中的宿主创建测试上传，检查目录、下载哈希、Range 和 ZIP
+导出，因此不是只读操作。Range 请求若返回 200 会记为 SKIP，传入 `--require-range`
+则记为失败；脚本内的历史代理解释不能证明新环境下的具体原因。
 
-See [CONTRACT.md](./CONTRACT.md) for API details and
-[RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) for historical release evidence.
-`lib/index.js` registers routes and injects `lib/client.js`; `lib/core.js`
-implements paths, ranges and staging. Development scripts are not included in
-the npm tarball.
+接口细节见 [CONTRACT.md](./CONTRACT.md)，历史发行核验见
+[RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md)。`lib/index.js` 注册路由并注入
+`lib/client.js`；`lib/core.js` 实现路径、Range 和暂存逻辑。开发脚本不随 npm 包发布。
 
-## License
+## 许可证
 
 MIT
