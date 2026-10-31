@@ -1,5 +1,8 @@
 # dsh-rfiles 0.1.0 — release checklist
 
+> Historical record for the MIT-licensed v0.1.0 release. For the current
+> revision's GPL-3.0-only license and transition details, see LICENSE and NOTICE.
+
 Status: **ready to publish**. The local tarball was validated end to end on
 2026-10-30 against DSH 0.2.1-rc.5 on macOS. Nothing was published to npm and no
 GitHub repository was created by this task.

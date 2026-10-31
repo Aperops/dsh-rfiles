@@ -2,7 +2,7 @@
   "name": "dsh-rfiles",
   "version": "0.1.0",
   "description": "Host-side DSH plugin that adds resumable chunked uploads, send-to-Agent, workspace file downloads, and session-log ZIP export to the paired remote Web UI.",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -17,6 +17,7 @@
     "README.md",
     "README.zh.md",
     "LICENSE",
+    "NOTICE",
     "assets"
   ],
   "keywords": [
